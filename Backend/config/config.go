@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"strings"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -32,5 +33,15 @@ func C() Config {
 	if err != nil {
 		slog.Error("Failed to parse environment variables: " + err.Error())
 	}
+	// Normalize port (e.g. "tcp/8080" -> "8080") so Listen works on all platforms
+	config.Server.Port = normalizePort(config.Server.Port)
 	return config
+}
+
+func normalizePort(p string) string {
+	p = strings.TrimSpace(p)
+	if idx := strings.LastIndex(p, "/"); idx >= 0 && idx < len(p)-1 {
+		return strings.TrimSpace(p[idx+1:])
+	}
+	return p
 }
