@@ -1,0 +1,56 @@
+info:
+  name: create
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/character/create"
+  headers:
+    - name: X-Reference-Id
+      value: "{{randRefID}}"
+  body:
+    type: json
+    data: |-
+      {
+        "name": "ravensia",
+        "race": "human",
+        "class": "paladin",
+        "stats":{
+          "str": 10,
+          "int": 10,
+          "dex": 10,
+          "con": 10,
+          "wis": 10,
+          "cha": 9
+        }
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const { v4: uuidv4 } = require('uuid');
+
+        const uuid = uuidv4();
+        bru.setVar("randRefID", uuid);
+    - type: after-response
+      code: |-
+        // Parse response
+        const resp = res.getBody();
+        const charId = resp.data.id;
+
+        // Set collection variable
+        bru.setVar("characterId", charId);
+
+        // Test
+        test("Status code is 200", function () {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

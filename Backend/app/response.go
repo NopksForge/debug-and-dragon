@@ -17,7 +17,7 @@ type ResponseCode string
 const (
 	CodeSuccess          ResponseCode = "000"
 	CodeFailedBadRequest ResponseCode = "400"
-	CodeFailedNotFound   ResponseCode = "404"
+	CodeSuccessNotFound  ResponseCode = "404"
 	CodeFailedInternal   ResponseCode = "500"
 )
 
@@ -29,23 +29,23 @@ func ReturnSuccess(c *gin.Context, data any) {
 	})
 }
 
-func ReturnBadRequest(c *gin.Context, message string) {
+func ReturnBadRequest(c *gin.Context) {
 	c.JSON(http.StatusBadRequest, Response{
 		Code:    string(CodeFailedBadRequest),
-		Message: "Bad request: " + message,
+		Message: "bad request",
 	})
 }
 
 func ReturnNotFound(c *gin.Context) {
-	c.JSON(http.StatusNotFound, Response{
-		Code:    string(CodeFailedNotFound),
-		Message: "User not found",
+	c.JSON(http.StatusOK, Response{
+		Code:    string(CodeSuccessNotFound),
+		Message: "character not found",
 	})
 }
 
-func ReturnInternalError(c *gin.Context, message string) {
+func ReturnInternalError(c *gin.Context) {
 	c.JSON(http.StatusInternalServerError, Response{
 		Code:    string(CodeFailedInternal),
-		Message: message,
+		Message: "Internal server error: ",
 	})
 }

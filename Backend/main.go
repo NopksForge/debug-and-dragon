@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"dndengine/app"
+	"dndengine/app/charactor"
 	"dndengine/config"
 	"fmt"
 	"log/slog"
@@ -75,8 +76,15 @@ func router(cfg config.Config) (*gin.Engine, func()) {
 		Addr: cfg.Cache.RedisURL,
 	})
 
+	storageCache := charactor.NewStorageCache(cache)
+
+	h := charactor.NewHandler(charactor.HandlerConfig{
+		Cache: storageCache,
+	})
+
 	{
-		// r.POST("/users/create", h.CreateUser)
+		r.POST("/character/create", h.CreateCharacter)
+		r.GET("/character/:id", h.GetCharacter)
 	}
 
 	return r, func() {
@@ -164,6 +172,7 @@ var headers = []string{
 	"Content-Length",
 	"Accept-Encoding",
 	"X-CSRF-Token",
+	"X-Reference-Id",
 	"Authorization",
 	"accept",
 	"origin",

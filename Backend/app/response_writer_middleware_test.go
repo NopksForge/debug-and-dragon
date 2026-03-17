@@ -89,7 +89,7 @@ func TestWriter(t *testing.T) {
 		handler := func(c *gin.Context) {
 			err := serror.New("test message")
 			c.JSON(http.StatusInternalServerError, Response{
-				Code:    5000,
+				Code:    string(CodeFailedInternal),
 				Message: err.Error(),
 			})
 		}
@@ -154,7 +154,7 @@ func TestWriter(t *testing.T) {
 			e.POST("/internal", func(c *gin.Context) {
 				err := serror.New("test message")
 				c.JSON(http.StatusInternalServerError, Response{
-					Code:    5000,
+					Code:    string(CodeFailedInternal),
 					Message: err.Error(),
 				})
 			})
@@ -173,7 +173,7 @@ func TestWriter(t *testing.T) {
 			e.POST("/badrequest", func(c *gin.Context) {
 				err := serror.New("test message")
 				c.JSON(http.StatusBadRequest, Response{
-					Code:    5000,
+					Code:    string(CodeFailedBadRequest),
 					Message: err.Error(),
 				})
 			})
@@ -300,7 +300,7 @@ func BenchmarkWriterWriteSerror(b *testing.B) {
 
 	for range b.N {
 		ctx.JSON(500, Response{
-			Code:    50001,
+			Code:    string(CodeFailedInternal),
 			Message: serror.New("testing error message").Error(),
 		})
 	}
