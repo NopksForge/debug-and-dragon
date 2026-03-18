@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ErrorPopup } from "../components/ErrorPopup";
 import { createCharacter } from "./characterApi";
+import { listRaces, type Race, type StatKey } from "./raceAPI";
 
-const RACES = ["Human", "Elf", "Dwarf", "Orc"] as const;
 const CLASSES = [
   "Fighter",
   "Wizard",
@@ -19,6 +19,81 @@ const CLASSES = [
 
 const STATS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"] as const;
 type Stat = (typeof STATS)[number];
+
+const STAT_KEY_LABEL: Record<StatKey, Stat> = {
+  str: "STR",
+  dex: "DEX",
+  con: "CON",
+  int: "INT",
+  wis: "WIS",
+  cha: "CHA",
+};
+
+const STAT_TAG_CLASS: Record<
+  StatKey,
+  { selected: string; unselected: string }
+> = {
+  str: {
+    unselected: "border-red-500/30 bg-red-500/15 text-red-200",
+    selected: "border-red-200 bg-red-100 text-red-800",
+  },
+  dex: {
+    unselected: "border-green-500/30 bg-green-500/15 text-green-200",
+    selected: "border-green-200 bg-green-100 text-green-800",
+  },
+  con: {
+    unselected: "border-amber-700/30 bg-amber-700/15 text-amber-200",
+    selected: "border-amber-200 bg-amber-100 text-amber-800",
+  },
+  int: {
+    unselected: "border-blue-500/30 bg-blue-500/15 text-blue-200",
+    selected: "border-blue-200 bg-blue-100 text-blue-800",
+  },
+  wis: {
+    unselected: "border-purple-500/30 bg-purple-500/15 text-purple-200",
+    selected: "border-purple-200 bg-purple-100 text-purple-800",
+  },
+  cha: {
+    unselected: "border-pink-500/30 bg-pink-500/15 text-pink-200",
+    selected: "border-pink-200 bg-pink-100 text-pink-800",
+  },
+};
+
+function getStatTagClass(key: StatKey, isSelected: boolean): string {
+  return isSelected ? STAT_TAG_CLASS[key].selected : STAT_TAG_CLASS[key].unselected;
+}
+
+type RaceBonusView =
+  | { kind: "none" }
+  | { kind: "all"; value: number }
+  | { kind: "parts"; parts: { key: StatKey; value: number }[] };
+
+function getRaceBonusView(bonuses: Race["stat_bonuses"]): RaceBonusView {
+  const normalized = bonuses ?? {};
+  const keys: StatKey[] = ["str", "dex", "con", "int", "wis", "cha"];
+  const allValues = keys.map((k) => normalized[k]);
+  const allPresent = allValues.every((v) => typeof v === "number");
+  const first = allValues[0];
+  const allSamePositive =
+    allPresent &&
+    typeof first === "number" &&
+    first > 0 &&
+    allValues.every((v) => v === first);
+
+  if (allSamePositive) {
+    return { kind: "all", value: first as number };
+  }
+
+  const parts = keys
+    .map((k) => ({ key: k, value: normalized[k] }))
+    .filter(
+      (p): p is { key: StatKey; value: number } =>
+        typeof p.value === "number" && p.value !== 0
+    );
+
+  if (parts.length === 0) return { kind: "none" };
+  return { kind: "parts", parts };
+}
 
 function roll4d6DropLowest(): number {
   const dice = [
@@ -63,6 +138,32 @@ export default function CreationPage() {
   const [draggedStat, setDraggedStat] = useState<Stat | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [availableRaces, setAvailableRaces] = useState<Race[]>([]);
+  const [isLoadingRaces, setIsLoadingRaces] = useState(true);
+  const [raceLoadFailed, setRaceLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        setIsLoadingRaces(true);
+        setRaceLoadFailed(false);
+        const races = await listRaces();
+        if (!isMounted) return;
+        setAvailableRaces(races);
+      } catch {
+        if (!isMounted) return;
+        setRaceLoadFailed(true);
+      } finally {
+        if (!isMounted) return;
+        setIsLoadingRaces(false);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const canShowStats = race !== null && characterClass !== null;
   const unassignedIndices =
@@ -199,20 +300,65 @@ export default function CreationPage() {
         <section className="mb-10">
           <h2 className="mb-3 text-sm font-medium text-zinc-300">Race</h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {RACES.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRace(r)}
-                className={`rounded-lg border px-4 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2 focus:ring-offset-zinc-950 ${
-                  race === r
-                    ? "border-zinc-400 bg-zinc-100 text-zinc-900"
-                    : "border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800"
-                }`}
-              >
-                {r}
-              </button>
-            ))}
+            {isLoadingRaces && (
+              <div className="col-span-full text-sm text-zinc-500">
+                Loading races...
+              </div>
+            )}
+            {!isLoadingRaces && raceLoadFailed && (
+              <div className="col-span-full text-sm text-zinc-500">
+                Failed to load races. Please refresh.
+              </div>
+            )}
+            {!isLoadingRaces &&
+              !raceLoadFailed &&
+              availableRaces.map((r) => (
+                <button
+                  key={r.name}
+                  type="button"
+                  onClick={() => setRace(r.name)}
+                  className={`relative rounded-lg border px-4 py-3 pb-9 text-left transition focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2 focus:ring-offset-zinc-950 ${
+                    race === r.name
+                      ? "border-zinc-400 bg-zinc-100 text-zinc-900"
+                      : "border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800"
+                  }`}
+                >
+                  <div className="text-sm font-medium leading-5">{r.name}</div>
+                  {(() => {
+                    const bonus = getRaceBonusView(r.stat_bonuses);
+                    if (bonus.kind === "none") return null;
+                    const isSelected = race === r.name;
+
+                    if (bonus.kind === "all") {
+                      return (
+                        <div
+                          className={`absolute bottom-2 left-2 inline-flex items-center  rounded-md border px-1 py-0.5 text-[9px] font-medium ${
+                            isSelected
+                              ? "border-zinc-300 bg-linear-to-r from-blue-700 via-green-600 to-red-600 text-white"
+                              : "border-zinc-700 bg-linear-to-r from-slate-700 to-slate-400"
+                          }`}
+                        >
+                          ALL STAT +{bonus.value}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
+                        {bonus.parts.map((p) => (
+                          <span
+                            key={p.key}
+                            className={`inline-flex items-center rounded-md border px-1 py-0.5 text-[9px] font-medium ${getStatTagClass(p.key, isSelected)}`}
+                          >
+                            {p.value > 0 ? "+" : ""}
+                            {p.value} {STAT_KEY_LABEL[p.key]}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </button>
+              ))}
           </div>
         </section>
 
