@@ -4,6 +4,7 @@ import (
 	"context"
 	"dndengine/app"
 	"dndengine/app/charactor"
+	"dndengine/app/race"
 	"dndengine/config"
 	"fmt"
 	"log/slog"
@@ -78,13 +79,23 @@ func router(cfg config.Config) (*gin.Engine, func()) {
 
 	storageCache := charactor.NewStorageCache(cache)
 
-	h := charactor.NewHandler(charactor.HandlerConfig{
-		Cache: storageCache,
-	})
-
+	// charactor
 	{
-		r.POST("/character/create", h.CreateCharacter)
-		r.GET("/character/:id", h.GetCharacter)
+		h := charactor.NewHandler(charactor.HandlerConfig{
+			Cache: storageCache,
+		})
+		characterGroup := r.Group("/character")
+
+		characterGroup.POST("/create", h.CreateCharacter)
+		characterGroup.GET("/:id", h.GetCharacter)
+	}
+
+	// race
+	{
+		h := race.NewHandler(race.HandlerConfig{})
+		raceGroup := r.Group("/race")
+
+		raceGroup.GET("/list", h.ListRace)
 	}
 
 	return r, func() {

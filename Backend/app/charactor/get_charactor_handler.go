@@ -2,7 +2,6 @@ package charactor
 
 import (
 	"dndengine/app"
-	"dndengine/app/charactor/model"
 	"log/slog"
 
 	"github.com/gin-gonic/gin"
@@ -13,11 +12,11 @@ type getCharacterRequest struct {
 }
 
 type getCharacterResponse struct {
-	ID    string               `json:"id"`
-	Name  string               `json:"name"`
-	Race  string               `json:"race"`
-	Class string               `json:"class"`
-	Stats model.CharacterStats `json:"stats"`
+	ID    string           `json:"id"`
+	Name  string           `json:"name"`
+	Race  string           `json:"race"`
+	Class string           `json:"class"`
+	Stats app.StatResponse `json:"stats"`
 }
 
 func (h *Handler) GetCharacter(c *gin.Context) {
@@ -42,5 +41,11 @@ func (h *Handler) GetCharacter(c *gin.Context) {
 	}
 
 	slog.Info("get character success", "id", req.ID, "x-ref-id", app.RefID(c))
-	app.ReturnSuccess(c, characterData)
+	app.ReturnSuccess(c, getCharacterResponse{
+		ID:    characterData.ID,
+		Name:  characterData.Name,
+		Race:  characterData.Race,
+		Class: characterData.Class,
+		Stats: characterData.Stats.ToResponse(),
+	})
 }

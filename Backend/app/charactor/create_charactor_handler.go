@@ -10,10 +10,10 @@ import (
 )
 
 type createCharacterRequest struct {
-	Name  string               `json:"name" binding:"required"`
-	Race  string               `json:"race" binding:"required"`
-	Class string               `json:"class" binding:"required"`
-	Stats model.CharacterStats `json:"stats" binding:"required"`
+	Name  string          `json:"name" binding:"required"`
+	Race  string          `json:"race" binding:"required"`
+	Class string          `json:"class" binding:"required"`
+	Stats app.StatRequest `json:"stats" binding:"required"`
 }
 
 type createCharacterResponse struct {
@@ -34,7 +34,7 @@ func (h *Handler) CreateCharacter(c *gin.Context) {
 		Name:  req.Name,
 		Race:  req.Race,
 		Class: req.Class,
-		Stats: req.Stats,
+		Stats: req.Stats.ToStat(),
 	}); err != nil {
 		slog.Error("failed to set character data to cache", "error", err, "x-ref-id", app.RefID(c))
 		app.ReturnInternalError(c)
