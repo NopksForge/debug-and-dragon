@@ -6,16 +6,7 @@ import { useRouter } from "next/navigation";
 import { ErrorPopup } from "../components/ErrorPopup";
 import { createCharacter } from "./characterApi";
 import { listRaces, type Race, type StatKey } from "./raceAPI";
-
-const CLASSES = [
-  "Fighter",
-  "Wizard",
-  "Cleric",
-  "Rogue",
-  "Ranger",
-  "Paladin",
-  "Barbarian",
-] as const;
+import { listClasses, type Class } from "./classAPI";
 
 const STATS = ["STR", "DEX", "CON", "INT", "WIS", "CHA"] as const;
 type Stat = (typeof STATS)[number];
@@ -61,6 +52,38 @@ const STAT_TAG_CLASS: Record<
 
 function getStatTagClass(key: StatKey, isSelected: boolean): string {
   return isSelected ? STAT_TAG_CLASS[key].selected : STAT_TAG_CLASS[key].unselected;
+}
+
+const STAT_RECOMMEND_CLASS: Record<StatKey, string> = {
+  str: "ring-2 ring-red-400/40 bg-red-500/5 border-red-500/40",
+  dex: "ring-2 ring-green-400/40 bg-green-500/5 border-green-500/40",
+  con: "ring-2 ring-amber-300/40 bg-amber-500/5 border-amber-500/40",
+  int: "ring-2 ring-blue-400/40 bg-blue-500/5 border-blue-500/40",
+  wis: "ring-2 ring-purple-400/40 bg-purple-500/5 border-purple-500/40",
+  cha: "ring-2 ring-pink-400/40 bg-pink-500/5 border-pink-500/40",
+};
+
+function getRecommendedStatBoxClass(key: StatKey): string {
+  return STAT_RECOMMEND_CLASS[key];
+}
+
+function statKeyFromAbbrev(stat: string): StatKey | null {
+  switch (stat) {
+    case "STR":
+      return "str";
+    case "DEX":
+      return "dex";
+    case "CON":
+      return "con";
+    case "INT":
+      return "int";
+    case "WIS":
+      return "wis";
+    case "CHA":
+      return "cha";
+    default:
+      return null;
+  }
 }
 
 type RaceBonusView =
@@ -141,6 +164,9 @@ export default function CreationPage() {
   const [availableRaces, setAvailableRaces] = useState<Race[]>([]);
   const [isLoadingRaces, setIsLoadingRaces] = useState(true);
   const [raceLoadFailed, setRaceLoadFailed] = useState(false);
+  const [availableClasses, setAvailableClasses] = useState<Class[]>([]);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(true);
+  const [classLoadFailed, setClassLoadFailed] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -165,7 +191,48 @@ export default function CreationPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        setIsLoadingClasses(true);
+        setClassLoadFailed(false);
+        const classes = await listClasses();
+        if (!isMounted) return;
+        setAvailableClasses(classes);
+      } catch {
+        if (!isMounted) return;
+        setClassLoadFailed(true);
+      } finally {
+        if (!isMounted) return;
+        setIsLoadingClasses(false);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const canShowStats = race !== null && characterClass !== null;
+  const recommendedStats = (() => {
+    if (!characterClass) return new Set<Stat>();
+    const picked = availableClasses.find((c) => c.name === characterClass);
+    const out = new Set<Stat>();
+    for (const s of picked?.primary_stat ?? []) {
+      if (
+        s === "STR" ||
+        s === "DEX" ||
+        s === "CON" ||
+        s === "INT" ||
+        s === "WIS" ||
+        s === "CHA"
+      ) {
+        out.add(s);
+      }
+    }
+    return out;
+  })();
   const unassignedIndices =
     rolledValues == null
       ? []
@@ -365,20 +432,80 @@ export default function CreationPage() {
         <section className="mb-10">
           <h2 className="mb-3 text-sm font-medium text-zinc-300">Class</h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {CLASSES.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCharacterClass(c)}
-                className={`rounded-lg border px-4 py-3 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2 focus:ring-offset-zinc-950 ${
-                  characterClass === c
-                    ? "border-zinc-400 bg-zinc-100 text-zinc-900"
-                    : "border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
+            {isLoadingClasses && (
+              <div className="col-span-full text-sm text-zinc-500">
+                Loading classes...
+              </div>
+            )}
+            {!isLoadingClasses && classLoadFailed && (
+              <div className="col-span-full text-sm text-zinc-500">
+                Failed to load classes. Please refresh.
+              </div>
+            )}
+            {!isLoadingClasses &&
+              !classLoadFailed &&
+              availableClasses.map((c) => {
+                const isSelected = characterClass === c.name;
+                return (
+                  <button
+                    key={c.name}
+                    type="button"
+                    onClick={() => setCharacterClass(c.name)}
+                    className={`relative rounded-lg border px-4 py-3 pb-9 text-left transition focus:outline-none focus:ring-2 focus:ring-zinc-400 focus:ring-offset-2 focus:ring-offset-zinc-950 ${
+                      isSelected
+                        ? "border-zinc-400 bg-zinc-100 text-zinc-900"
+                        : "border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-800"
+                    }`}
+                  >
+                    <div className="text-sm font-medium leading-5">{c.name}</div>
+                    {c.subname && (
+                      <div className="mt-1 text-xs text-zinc-500">
+                        {c.subname}
+                      </div>
+                    )}
+                    {Array.isArray(c.primary_stat) && c.primary_stat.length > 0 && (
+                      <div className="absolute bottom-2 left-2 flex flex-wrap items-center gap-1 ml-2">
+                        <span
+                          className={`inline-flex items-center text-[9px] leading-none font-medium ${
+                            isSelected ? "text-zinc-700" : "text-zinc-500"
+                          }`}
+                        >
+                          Main stat:
+                        </span>
+                        {c.primary_stat.map((s) => {
+                          const key = statKeyFromAbbrev(s);
+                          if (!key) {
+                            return (
+                              <span
+                                key={s}
+                                className={`inline-flex items-center rounded-md border px-1 py-0.5 text-[9px] leading-none font-medium ${
+                                  isSelected
+                                    ? "border-zinc-300 bg-zinc-200 text-zinc-900"
+                                    : "border-zinc-700 bg-zinc-900/40 text-zinc-200"
+                                }`}
+                              >
+                                {s}
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <span
+                              key={s}
+                              className={`inline-flex items-center rounded-md border px-1 py-0.5 text-[9px] leading-none font-medium ${getStatTagClass(
+                                key,
+                                isSelected
+                              )}`}
+                            >
+                              {s}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
           </div>
         </section>
 
@@ -462,6 +589,12 @@ export default function CreationPage() {
                         {STATS.map((stat) => {
                           const idx = statToIndex[stat];
                           const value = idx != null ? rolledValues[idx] : null;
+                          const isRecommended =
+                            rolledValues != null &&
+                            recommendedStats.has(stat);
+                          const recommendedKey = isRecommended
+                            ? statKeyFromAbbrev(stat)
+                            : null;
                           return (
                             <div
                               key={stat}
@@ -471,10 +604,23 @@ export default function CreationPage() {
                                 value != null
                                   ? "border-zinc-600"
                                   : "border-dashed border-zinc-600"
-                              } ${draggedStat === stat ? "opacity-50" : ""}`}
+                              } ${draggedStat === stat ? "opacity-50" : ""} ${
+                                recommendedKey ? getRecommendedStatBoxClass(recommendedKey) : ""
+                              }`}
                             >
-                              <div className="text-xs text-zinc-500">
-                                {stat}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="text-xs text-zinc-500">{stat}</div>
+                                {isRecommended && (
+                                  <div
+                                    className={`inline-flex items-center rounded-md border px-1 py-0.5 text-[9px] leading-none font-medium ${
+                                      recommendedKey
+                                        ? getStatTagClass(recommendedKey, false)
+                                        : "border-zinc-600 bg-zinc-900/40 text-zinc-200"
+                                    }`}
+                                  >
+                                    rec
+                                  </div>
+                                )}
                               </div>
                               {value != null ? (
                                 <div
