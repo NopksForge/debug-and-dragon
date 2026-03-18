@@ -4,6 +4,7 @@ import (
 	"dndengine/app"
 	"dndengine/app/class/model"
 	"log/slog"
+	"sort"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,6 +28,10 @@ func (h *Handler) ListClass(c *gin.Context) {
 			PrimaryStat: cfg.PrimaryStat,
 		})
 	}
+
+	sort.Slice(classes, func(i, j int) bool {
+		return classes[i].Name < classes[j].Name
+	})
 
 	slog.Info("list class configs success", "x-ref-id", app.RefID(c))
 	app.ReturnSuccess(c, listClassResponse{

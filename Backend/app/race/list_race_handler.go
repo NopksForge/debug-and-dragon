@@ -4,6 +4,7 @@ import (
 	"dndengine/app"
 	"dndengine/app/race/model"
 	"log/slog"
+	"sort"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,6 +27,10 @@ func (h *Handler) ListRace(c *gin.Context) {
 			StatBonuses: traits.Bonuses.ToResponse(),
 		})
 	}
+
+	sort.Slice(races, func(i, j int) bool {
+		return races[i].Name < races[j].Name
+	})
 
 	slog.Info("list race configs success", "x-ref-id", app.RefID(c))
 	app.ReturnSuccess(c, listRaceResponse{
