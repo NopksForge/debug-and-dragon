@@ -4,6 +4,7 @@ import (
 	"context"
 	"dndengine/app"
 	"dndengine/app/charactor"
+	"dndengine/app/class"
 	"dndengine/app/race"
 	"dndengine/config"
 	"fmt"
@@ -96,6 +97,15 @@ func router(cfg config.Config) (*gin.Engine, func()) {
 		raceGroup := r.Group("/race")
 
 		raceGroup.GET("/list", h.ListRace)
+	}
+
+	// class
+	{
+		h := class.NewHandler(class.HandlerConfig{})
+		classGroup := r.Group("/class")
+
+		classGroup.GET("/list", h.ListClass)
+		classGroup.GET("/config/:name", h.GetClassConfig)
 	}
 
 	return r, func() {

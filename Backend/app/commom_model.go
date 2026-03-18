@@ -1,6 +1,18 @@
 package app
 
 // -- STAT -------------------------------------------------------------
+
+type StatKey string
+
+const (
+	STAT_STR StatKey = "STR"
+	STAT_DEX StatKey = "DEX"
+	STAT_CON StatKey = "CON"
+	STAT_INT StatKey = "INT"
+	STAT_WIS StatKey = "WIS"
+	STAT_CHA StatKey = "CHA"
+)
+
 type Stat struct {
 	Strength     int
 	Dexterity    int
