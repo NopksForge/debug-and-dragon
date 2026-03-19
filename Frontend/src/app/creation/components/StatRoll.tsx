@@ -1,7 +1,15 @@
 "use client";
 
-import type { StatKey } from "../raceAPI";
 import { STATS, type Stat, getRecommendedStatBoxClass, getStatTagClass, statKeyFromAbbrev } from "../statStyles";
+
+const STAT_TOOLTIP: Record<Stat, string> = {
+  STR: "Strength: physical power and carrying capacity. Main stat for melee fighters.",
+  DEX: "Dexterity: agility, reflexes, and balance. Useful for defense and precision.",
+  CON: "Constitution: health and stamina. Boosts HP and resilience for everyone.",
+  INT: "Intelligence: memory and reasoning. Main stat for Wizards, used for knowledge checks.",
+  WIS: "Wisdom: perception and intuition. Key for Clerics, Druids, and noticing danger.",
+  CHA: "Charisma: confidence and influence. Important for Bards, Paladins, Sorcerers, Warlocks, and social skills.",
+};
 
 function roll4d6DropLowest(): number {
   const dice = [
@@ -186,7 +194,7 @@ export function StatRoll(props: {
                         e.dataTransfer.effectAllowed = "move";
                       }}
                       onDragEnd={onDragEnd}
-                      className={`cursor-grab rounded border border-zinc-600 bg-zinc-800 px-3 py-2 text-sm font-medium text-zinc-200 active:cursor-grabbing ${
+                      className={`cursor-grab rounded border w-10 h-10 border-zinc-600 bg-zinc-800 px-3 py-2 text-center text-sm font-medium text-zinc-200 active:cursor-grabbing ${
                         draggedIndex === i ? "opacity-50" : "hover:border-zinc-500"
                       }`}
                     >
@@ -215,21 +223,32 @@ export function StatRoll(props: {
                         value != null ? "border-zinc-600" : "border-dashed border-zinc-600"
                       } ${draggedStat === stat ? "opacity-50" : ""} ${
                         recommendedKey ? getRecommendedStatBoxClass(recommendedKey) : ""
-                      }`}
+                      } group`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-xs text-zinc-500">{stat}</div>
-                        {isRecommended && (
-                          <div
-                            className={`inline-flex items-center rounded-md border px-1 py-0.5 text-[9px] leading-none font-medium ${
-                              recommendedKey
-                                ? getStatTagClass(recommendedKey, false)
-                                : "border-zinc-600 bg-zinc-900/40 text-zinc-200"
-                            }`}
-                          >
-                            rec
-                          </div>
-                        )}
+                        <div
+                          className="text-xs text-zinc-500"
+                        >
+                          {stat}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isRecommended && (
+                            <div
+                              className={`inline-flex items-center rounded-md border px-1 py-0.5 text-[9px] leading-none font-medium ${
+                                recommendedKey
+                                  ? getStatTagClass(recommendedKey, false)
+                                  : "border-zinc-600 bg-zinc-900/40 text-zinc-200"
+                              }`}
+                            >
+                              rec
+                            </div>
+                          )}
+                          <span className="relative inline-flex">
+                            <span className="pointer-events-none absolute right-0 top-4 z-50 hidden w-56 rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1.5 text-[11px] leading-snug text-zinc-200 shadow-lg group-hover:block">
+                              {STAT_TOOLTIP[stat]}
+                            </span>
+                          </span>
+                        </div>
                       </div>
                       {value != null ? (
                         <div
